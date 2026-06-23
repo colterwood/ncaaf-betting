@@ -48,7 +48,10 @@ CFBD API ───────┘   (data/games/)     (data/pbp_YYYY...)    (qua
   possession, red-zone trips, explosive plays, turnovers, and more.
 - **`drive_log`** — one row per drive: result, start/end field position, yards,
   play counts, pass/run split, 3rd-down conversions, time of possession, points,
-  red-zone, explosive plays, sacks, penalties.
+  red-zone, explosive plays, sacks, penalties, `quarterback` (the QB on the most
+  plays in the drive; run-only drives inherit the nearest same-game drive's QB),
+  and `personnel` (QB depth: 1 = the team's first QB to lead a drive that game,
+  2 = the next, etc.).
 
 Both carry point-in-time team & coach records and the score/margin entering each
 segment. Scoring is attributed to the wall-clock quarter (matching sportsbook

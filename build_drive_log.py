@@ -17,7 +17,7 @@ import argparse
 import json
 import os
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -32,6 +32,26 @@ PASS, RUN = "pass", "run"
 EXPLOSIVE_YDS = 20
 REDZONE_YDS = 20
 _FG_MISS_RE = re.compile(r"missed|blocked|no good", re.I)
+_NO_QB = ("", "N/A")
+
+
+def _is_qb(q) -> bool:
+    """True if `q` is a real quarterback name (not blank / not the 'N/A' marker)."""
+    return isinstance(q, str) and q.strip() not in _NO_QB
+
+
+def _drive_qb(d: pd.DataFrame) -> str | None:
+    """The QB on the most plays in this drive; ties broken by earliest appearance.
+    Returns None when no play in the drive names a QB (e.g. all runs/kneels)."""
+    qbs = [q for q in d["quarterback"].tolist() if _is_qb(q)]
+    if not qbs:
+        return None
+    counts = Counter(qbs)
+    top = max(counts.values())
+    for q in qbs:  # play order -> earliest among the most-frequent
+        if counts[q] == top:
+            return q
+    return qbs[0]
 
 
 def _half(start_gs, quarter: int):
@@ -83,10 +103,43 @@ def process_game_drives(gid: str, g: pd.DataFrame, ctx: dict, season: int) -> li
     # First pass: drive start clock for TOP linking + per-quarter/half ordinals
     starts = {}  # poss -> game_seconds at first play
     start_q = {}
+    raw_qb, offense_of = {}, {}
     for poss, d in real.groupby("game_poss_num", sort=True):
         f = d.iloc[0]
         starts[poss] = game_seconds(f["quarter"], f["secs_left_quarter"])
         start_q[poss] = qbucket(f["quarter"])
+        raw_qb[poss] = _drive_qb(d)
+        offense_of[poss] = f["offensive_team"]
+
+    # Rank QBs by the order they first LEAD a drive (become a drive's primary QB),
+    # chronologically, per team: 1 = the team's first QB to run a drive, 2 = the
+    # next new one, etc. -> the `personnel` field. A one-off trick-play passer who
+    # never leads a drive isn't counted, which keeps ranks clean and 1-based.
+    qb_rank: dict = defaultdict(dict)
+    for poss in sorted(raw_qb):
+        qb, team = raw_qb[poss], offense_of[poss]
+        if qb is not None and qb not in qb_rank[team]:
+            qb_rank[team][qb] = len(qb_rank[team]) + 1
+
+    # Each drive's QB = most-frequent passer; QB-less drives (runs/kneels) inherit
+    # the team's nearest identifiable drive in this game (prev, else next).
+    team_poss = defaultdict(list)
+    for poss in sorted(raw_qb):
+        team_poss[offense_of[poss]].append(poss)
+    drive_qb: dict = {}
+    for team, plist in team_poss.items():
+        last = None
+        fwd = {}
+        for p in plist:                # forward-fill: carry the prior known QB
+            if raw_qb[p] is not None:
+                last = raw_qb[p]
+            fwd[p] = last
+        nxt = None
+        for p in reversed(plist):      # back-fill leading gaps: carry the next QB
+            if fwd[p] is not None:
+                nxt = fwd[p]
+            drive_qb[p] = fwd[p] if fwd[p] is not None else nxt
+
     ordered = sorted(starts, key=lambda p: (starts[p] is None, starts[p] if starts[p] is not None else 0, p))
     top = {}
     for i, poss in enumerate(ordered):
@@ -166,6 +219,8 @@ def process_game_drives(gid: str, g: pd.DataFrame, ctx: dict, season: int) -> li
             "opponent": opponent,
             "is_home": side == "home",
             "home_away": "Home" if side == "home" else "Away",
+            "quarterback": drive_qb.get(poss),
+            "personnel": qb_rank.get(offense, {}).get(drive_qb.get(poss)),
             "team_coach": c.get(f"{side}_coach"),
             "team_wins_entering": c.get(f"{side}_team_wins"),
             "team_losses_entering": c.get(f"{side}_team_losses"),

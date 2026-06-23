@@ -90,6 +90,8 @@ create table if not exists drive_log (
   opponent text,
   is_home boolean,
   home_away text,
+  quarterback text,
+  personnel integer,
   team_coach text,
   team_wins_entering integer,
   team_losses_entering integer,
@@ -125,6 +127,8 @@ create table if not exists drive_log (
 create index if not exists idx_drive_log_team_season on drive_log (team, season);
 create index if not exists idx_drive_log_result on drive_log (drive_result);
 create index if not exists idx_drive_log_date on drive_log (date);
+alter table drive_log add column if not exists quarterback text;
+alter table drive_log add column if not exists personnel integer;
 """
 
 
