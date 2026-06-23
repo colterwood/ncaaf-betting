@@ -1,0 +1,15 @@
+# Secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Large, regenerable data artifacts (rebuilt by the pipeline)
+data/games/
+data/*.csv
+data/*.json
+data/*.txt
+
+# Stray single-game sample output at the repo root
+/pbp_*.csv
