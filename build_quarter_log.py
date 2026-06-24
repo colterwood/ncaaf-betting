@@ -69,6 +69,7 @@ def _drive_records(g: pd.DataFrame) -> list[dict]:
         scrim = d[d["play_type"].isin([PASS, RUN])]
         n_pass = int((d["play_type"] == PASS).sum())
         n_rush = int((d["play_type"] == RUN).sum())
+        scrim_yds = pd.to_numeric(scrim["play_yards"], errors="coerce").sum()
 
         # Outcome + the quarter the ending event happened (wall-clock)
         outcome, event_q = "other", None
@@ -100,6 +101,7 @@ def _drive_records(g: pd.DataFrame) -> list[dict]:
             "plays": n_pass + n_rush,
             "pass_plays": n_pass,
             "rush_plays": n_rush,
+            "scrim_yards": scrim_yds,
             "yards": pd.to_numeric(last["poss_yards"], errors="coerce"),
             "outcome": outcome,
             "event_q": event_q,
@@ -151,6 +153,8 @@ def process_game(gid: str, g: pd.DataFrame, ctx: dict) -> list[dict]:
         s["plays"] += dr["plays"]
         s["pass_plays"] += dr["pass_plays"]
         s["rush_plays"] += dr["rush_plays"]
+        if pd.notna(dr["scrim_yards"]):
+            s["scrim_yards_sum"] += dr["scrim_yards"]
         if pd.notna(dr["start_pos"]):
             s["start_pos_sum"] += dr["start_pos"]; s["start_pos_n"] += 1
         if pd.notna(dr["yards"]):
@@ -256,6 +260,7 @@ def process_game(gid: str, g: pd.DataFrame, ctx: dict) -> list[dict]:
                 "points_for": points[(side, q)],
                 "avg_start_pos_for": avg(sf, "start_pos_sum", "start_pos_n"),
                 "avg_yards_for": avg(sf, "yards_sum", "yards_n"),
+                "yards_per_play_for": avg(sf, "scrim_yards_sum", "plays"),
                 "avg_secs_per_drive_for": avg(sf, "top_sum", "top_n"),
                 "plays_per_drive_for": avg(sf, "plays", "drives"),
                 "pass_plays_per_drive_for": avg(sf, "pass_plays", "drives"),
@@ -276,6 +281,7 @@ def process_game(gid: str, g: pd.DataFrame, ctx: dict) -> list[dict]:
                 "points_against": points[(opp_side, q)],
                 "avg_start_pos_against": avg(sa, "start_pos_sum", "start_pos_n"),
                 "avg_yards_against": avg(sa, "yards_sum", "yards_n"),
+                "yards_per_play_against": avg(sa, "scrim_yards_sum", "plays"),
                 "avg_secs_per_drive_against": avg(sa, "top_sum", "top_n"),
                 "plays_per_drive_against": avg(sa, "plays", "drives"),
                 "pass_plays_per_drive_against": avg(sa, "pass_plays", "drives"),

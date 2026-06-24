@@ -81,6 +81,8 @@ create index if not exists idx_quarter_log_team_season on quarter_log (team, sea
 create index if not exists idx_quarter_log_quarter on quarter_log (quarter);
 create index if not exists idx_quarter_log_date on quarter_log (date);
 alter table quarter_log add column if not exists home_away text;
+alter table quarter_log add column if not exists yards_per_play_for real;
+alter table quarter_log add column if not exists yards_per_play_against real;
 
 create table if not exists drive_log (
   season integer not null,
@@ -129,6 +131,7 @@ create index if not exists idx_drive_log_result on drive_log (drive_result);
 create index if not exists idx_drive_log_date on drive_log (date);
 alter table drive_log add column if not exists quarterback text;
 alter table drive_log add column if not exists personnel integer;
+alter table drive_log add column if not exists yards_per_play real;
 """
 
 
