@@ -70,6 +70,8 @@ def _drive_records(g: pd.DataFrame) -> list[dict]:
         n_pass = int((d["play_type"] == PASS).sum())
         n_rush = int((d["play_type"] == RUN).sum())
         scrim_yds = pd.to_numeric(scrim["play_yards"], errors="coerce").sum()
+        pass_yds = pd.to_numeric(d.loc[d["play_type"] == PASS, "play_yards"], errors="coerce").sum()
+        run_yds = pd.to_numeric(d.loc[d["play_type"] == RUN, "play_yards"], errors="coerce").sum()
 
         # Outcome + the quarter the ending event happened (wall-clock)
         outcome, event_q = "other", None
@@ -102,6 +104,8 @@ def _drive_records(g: pd.DataFrame) -> list[dict]:
             "pass_plays": n_pass,
             "rush_plays": n_rush,
             "scrim_yards": scrim_yds,
+            "pass_yds": pass_yds,
+            "run_yds": run_yds,
             "yards": pd.to_numeric(last["poss_yards"], errors="coerce"),
             "outcome": outcome,
             "event_q": event_q,
@@ -155,6 +159,10 @@ def process_game(gid: str, g: pd.DataFrame, ctx: dict) -> list[dict]:
         s["rush_plays"] += dr["rush_plays"]
         if pd.notna(dr["scrim_yards"]):
             s["scrim_yards_sum"] += dr["scrim_yards"]
+        if pd.notna(dr["pass_yds"]):
+            s["pass_yds_sum"] += dr["pass_yds"]
+        if pd.notna(dr["run_yds"]):
+            s["run_yds_sum"] += dr["run_yds"]
         if pd.notna(dr["start_pos"]):
             s["start_pos_sum"] += dr["start_pos"]; s["start_pos_n"] += 1
         if pd.notna(dr["yards"]):
@@ -266,6 +274,11 @@ def process_game(gid: str, g: pd.DataFrame, ctx: dict) -> list[dict]:
                 "pass_plays_per_drive_for": avg(sf, "pass_plays", "drives"),
                 "rush_plays_per_drive_for": avg(sf, "rush_plays", "drives"),
                 "plays_for": int(sf.get("plays", 0)),
+                "pass_plays_for": int(sf.get("pass_plays", 0)),
+                "rush_plays_for": int(sf.get("rush_plays", 0)),
+                "yards_per_pass_for": avg(sf, "pass_yds_sum", "pass_plays"),
+                "yards_per_run_for": avg(sf, "run_yds_sum", "rush_plays"),
+                "secs_per_play_for": avg(sf, "top_sum", "plays"),
                 "three_and_outs_for": int(sf.get("three_and_outs", 0)),
                 "redzone_trips_for": int(sf.get("rz_trips", 0)),
                 "redzone_tds_for": int(sf.get("rz_tds", 0)),
@@ -287,6 +300,11 @@ def process_game(gid: str, g: pd.DataFrame, ctx: dict) -> list[dict]:
                 "pass_plays_per_drive_against": avg(sa, "pass_plays", "drives"),
                 "rush_plays_per_drive_against": avg(sa, "rush_plays", "drives"),
                 "plays_against": int(sa.get("plays", 0)),
+                "pass_plays_against": int(sa.get("pass_plays", 0)),
+                "rush_plays_against": int(sa.get("rush_plays", 0)),
+                "yards_per_pass_against": avg(sa, "pass_yds_sum", "pass_plays"),
+                "yards_per_run_against": avg(sa, "run_yds_sum", "rush_plays"),
+                "secs_per_play_against": avg(sa, "top_sum", "plays"),
                 "three_and_outs_against": int(sa.get("three_and_outs", 0)),
                 "redzone_trips_against": int(sa.get("rz_trips", 0)),
                 "redzone_tds_against": int(sa.get("rz_tds", 0)),

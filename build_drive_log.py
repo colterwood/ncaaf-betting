@@ -246,6 +246,8 @@ def process_game_drives(gid: str, g: pd.DataFrame, ctx: dict, season: int) -> li
             "yards_per_run": round(run_yds / n_run, 3) if n_run else None,
             "yards_per_play": round((pass_yds + run_yds) / (n_pass + n_run), 3) if (n_pass + n_run) else None,
             "total_secs": top[poss],
+            "secs_per_play": round(top[poss] / (n_pass + n_run), 3)
+            if (top[poss] is not None and (n_pass + n_run)) else None,
             "points_scored": pts,
             "is_scoring_drive": pts > 0,
             "reached_redzone": bool((ytz <= REDZONE_YDS).any()),
